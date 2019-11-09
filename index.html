@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Credit Card</title>
+	<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Montserrat&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Source+Code+Pro&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Homemade+Apple&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="assets/css/all.min.css" />
+	<link rel="stylesheet" href="assets/css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+	<div id="app">
+	  <section id="credit-card" :class="{'is-flipped': isFlipped}">
+	  	<div class="cc-content">
+	  		<div class="front">
+	  			<transition name="fade">
+	  				<div class="card-icon" v-if="cardIconShow" @click="changeIcon">
+	  					<i class="fa-3x fab" :class="ccIcon"></i>
+	  				</div>
+	  			</transition>
+	  			<img src="assets/img/chip.png" id="cc-chip">
+	  			<div class="focus-area cc-number" data-rel="card-number">
+	  				{{ ccNumber ? ccNumber : 'xxxx xxxx xxxx xxxx' }}
+	  			</div>
+	  			<div class="flex-it cc-footer">
+	  				<span class="focus-area" data-rel="card-name">
+	  					<label>
+	  						Card Holder
+	  						<p>{{ fullName }}</p>
+	  					</label>
+	  				</span>
+	  				<span class="focus-area" data-rel="expiration">
+	  					<label>
+	  						Expires
+	  					</label>
+	  					<p v-if="expMonth && expYear">
+	  						{{ expMonth }}
+	  						<span>/</span>
+	  						{{ getExpYear }}
+	  					</p>
+	  				</span>
+	  			</div>
+	  		</div>
+	  		<div class="back">
+	  			<div id="stripe"></div>
+	  			<div class="card-icon">
+	  				<i class="fa-3x fab" :class="ccIcon"></i>
+	  			</div>
+	  			<div id="sig-cvv" class="flex-it">
+	  				<span id="signature">
+	  					{{ fullName }}
+	  				</span>
+	  				<span id="cvv-area" class="focus-area" data-rel="cvv">
+		  				<label>CVV</label>
+		  				<div>{{ cvv }}</div>
+		  			</span>
+	  			</div>
+	  		</div>
+	  	</div>
+	  </section>
+	  <!-- End of credit card -->
+
+	  <form id="cc-form" @submit="false">
+	  	<div class="form-group">
+	  		<label for="card-number">
+	  			Card Number
+	  		</label>
+	  		<input 
+	  			type="text" 
+	  			name="card-number" 
+	  			v-model="ccNumber"
+	  			@focus="cardFlip('card-number')"
+	  			@keyup="creditCardUpdate">
+	  	</div>
+
+	  	<div class="form-group">
+	  		<label for="card-number">
+	  			Card Holder
+	  		</label>
+	  		<input 
+	  			type="text" 
+	  			name="card-name"
+	  			v-model="fullName" 
+	  			@focus="cardFlip('card-name')">
+	  	</div>
+
+	  	<div class="form-group" id="exp-cvv">
+	  		<div class="flex-it">
+		  		<div>
+		  			<label>Exp. Month</label>
+			  		<select 
+			  			name="exp-month" 
+			  			v-model="expMonth" 
+			  			@focus="cardFlip('expiration')">
+			  			<option value="">Month</option>
+			  			<option  
+			  				:value="month" 
+			  				v-for="month in 12">
+			  				{{ month }}
+			  			</option>
+			  		</select>
+			  	</div>
+			  	<div>
+			  		<label>Exp. Year</label>
+			  		<select 
+			  			name="exp-year" 
+			  			@focus="cardFlip('expiration')"
+			  			v-model="expYear">
+			  			<option value="">Year</option>
+			  			<option  
+			  				:value="(year + minYear)" 
+			  				v-for="year in 10">
+			  				{{ year + minYear }}
+			  			</option>
+			  		</select>
+		  		</div>
+	  		</div>
+	  		<div>
+		  		<label for="cvv">
+		  			CVV
+		  		</label>
+		  		<input 
+		  			type="text" 
+		  			v-model="cvv" 
+		  			name="cvv" 
+		  			@focus="cardFlip('cvv', true)"
+		  			maxlength="3">
+	  		</div>
+	  	</div>
+	  	<div class="form-group">
+	  		<button>
+	  			Submit
+	  		</button>
+	  	</div>
+	  </form>
+	</div>
+	<script>
+		var app = new Vue({
+		  el: '#app',
+		  data () {
+		  	return {
+		  		expMonth: '',
+			    minYear: new Date().getFullYear() - 1,
+			    expYear: '',
+			    ccIcon: 'fa-cc-visa',
+			    ccNumber: '',
+			    fullName: '',
+			    cvv: '',
+			    cardIconShow: true,
+			    isFlipped: false,
+		  	};
+		  },
+		  watch: {
+		  	ccIcon: function (newIcon) {
+		  		this.changeIcon(newIcon);
+		  	}
+		  },
+		  computed: {
+		  	getExpYear() {
+		  		if (!this.expYear) {
+		  			return '';
+		  		}
+
+		  		return this.expYear.toString().slice(-2);
+		  	}
+		  },
+		  methods: {
+		  	creditCardUpdate() {
+		  		let icon = 'fa-cc-';
+		  		switch (true) {
+		  			case /^(6011|65)/.test(this.ccNumber):
+		  				icon += 'discover';
+		  				break;
+		  			case /^(51|55)/.test(this.ccNumber):
+		  				icon += 'mastercard';
+		  				break;
+		  			case /^(34|37)/.test(this.ccNumber):
+		  				icon += 'amex';
+		  				break;
+		  			default: 
+		  				icon += 'visa';
+		  		}
+
+		  		this.ccIcon = icon;
+		  	},
+		  	changeIcon(newIcon) {
+		  		this.cardIconShow = false;
+		  		setTimeout(() => {
+		  			this.ccIcon = newIcon;
+		  			this.cardIconShow = true;
+		  		}, 750);
+		  	},
+		  	cardFlip(focusArea, flipped = false) {
+		  		this.isFlipped = flipped;
+		  		
+		  		const eles = document.getElementsByClassName('focus-area');
+
+		  		[].forEach.call(eles, function(el) {
+				    el.classList.remove('current-focus');
+				});
+
+		  		document.querySelector(`[data-rel="${focusArea}"]`).classList.add('current-focus');
+		  	}
+		  }
+		})
+	</script>
+</body>
+</html>
